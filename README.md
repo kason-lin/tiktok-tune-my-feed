@@ -4,22 +4,33 @@ A clickable TikTok-style app (plain HTML/CSS/JS, no build step) that adds one ne
 
 This is a concept prototype for a demo. It is not affiliated with TikTok. 
 
-## Run it
+## Try it live
 
-**On your laptop** (from this folder):
+**👉 https://tiktok-tune-my-feed.vercel.app**
+
+Works on any phone or laptop, no setup needed. On a laptop it shows inside an iPhone frame.
+
+**On an iPhone:** open the link in Safari, tap Share → **Add to Home Screen**, then open it from the home screen. It runs full-screen with no Safari bars, like a real app.
+
+## Updating the live site
+
+The site is hosted on Vercel and connected to this GitHub repo. Every push to `main` redeploys it automatically in about 30 seconds:
+
+```bash
+git add .
+git commit -m "What I changed"
+git push
+```
+
+## Run it locally (optional)
+
+For offline work or testing changes before pushing, run this from this folder:
 
 ```bash
 python3 -m http.server 8000 --bind 0.0.0.0
 ```
 
-Then open http://localhost:8000. On a laptop it shows inside an iPhone frame.
-
-**On your iPhone** (same Wi-Fi as the laptop, with the server above running):
-1. Find your laptop's IP: `ipconfig getifaddr en0` (for example `192.168.1.5`).
-2. On the iPhone, open Safari and go to `http://192.168.1.5:8000`.
-3. Tap Share → **Add to Home Screen** → open it from the home screen. It now runs full-screen with no Safari bars, like a real app.
-
-If macOS asks whether Python can accept incoming connections, click **Allow**.
+Then open http://localhost:8000. To try it on a phone on the same Wi-Fi, find your laptop's IP with `ipconfig getifaddr en0` and open `http://<that-ip>:8000`. If macOS asks whether Python can accept incoming connections, click **Allow**.
 
 ## Files
 
