@@ -14,7 +14,7 @@ This is a concept prototype for a demo. It is not affiliated with TikTok.
 
 **What happened.** 3 of 3 NYU students in a usability test found the long-press menu and used the sliders without help. I pitched the MVP to 7 product managers at the NYU Product Management Club.
 
-**How it was built.** I built it with Claude Code. I owned the scope, the UX and the ranking logic: each slider sets a topic's weight, and the queue re-ranks 45 videos across 6 topics.
+**How it was built.** Plain HTML, CSS and JavaScript, built with Claude Code. Each slider sets a topic's weight, and the queue re-ranks 45 videos across 6 topics.
 
 Full case study: https://www.kasonlin.com/tiktok.html
 
