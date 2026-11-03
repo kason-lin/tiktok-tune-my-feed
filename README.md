@@ -4,6 +4,20 @@ A clickable TikTok-style app (plain HTML/CSS/JS, no build step) that adds one ne
 
 This is a concept prototype for a demo. It is not affiliated with TikTok. 
 
+## Why this exists
+
+**The problem.** I interviewed 7 college students about how they use TikTok. The top frustration: when the For You feed goes off (one friend-sent video can skew it), there's no fast way to fix it, so people switch to Instagram Reels. TikTok does have topic settings, but they're buried in Settings.
+
+**The idea.** Put feed control where users already are. Long-press a video, right where "Not interested" lives, and turn each topic up, down or off. The next videos change immediately instead of after days of retraining.
+
+**What to try.** Open the live demo, long-press any video, tap *Tune My Feed*, drag Food to "More" and save. Upcoming videos re-rank on the spot. In a demo run, that took Food from about 1 in 10 upcoming videos to 5 in 10.
+
+**What happened.** 3 of 3 NYU students in a usability test found the long-press menu and used the sliders without help. I pitched the MVP to 7 product managers at the NYU Product Management Club.
+
+**How it was built.** I built it with Claude Code. I owned the scope, the UX and the ranking logic: each slider sets a topic's weight, and the queue re-ranks 45 videos across 6 topics.
+
+Full case study: https://www.kasonlin.com/tiktok.html
+
 ## Try it live
 
 **👉 https://tiktok-tune-my-feed.vercel.app**
