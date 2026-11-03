@@ -12,7 +12,7 @@ This is a concept prototype for a demo. It is not affiliated with TikTok.
 
 **What to try.** Open the live demo, long-press any video, tap *Tune My Feed*, drag Food to "More" and save. Upcoming videos re-rank on the spot. In a demo run, that took Food from about 1 in 10 upcoming videos to 5 in 10.
 
-**What happened.** 3 of 3 NYU students in a usability test found the long-press menu and used the sliders without help. I pitched the MVP to 7 product managers at the NYU Product Management Club.
+**What happened.** In a usability test, 3 of 3 NYU students understood the sliders with no explanation, and 2 of 3 picked them as their favorite feature. I pitched the MVP to 7 product managers at the NYU Product Management Club.
 
 **How it was built.** Plain HTML, CSS and JavaScript, built with Claude Code. Each slider sets a topic's weight, and the queue re-ranks 45 videos across 6 topics.
 
