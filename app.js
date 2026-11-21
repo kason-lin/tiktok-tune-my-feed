@@ -889,22 +889,26 @@
         <div class="tune-scroll s-scroll">
           <p class="tune-sub">Choose what you want to see more or less of on For You.</p>
           ${card}
+          <div class="topics-title"><span>Type a topic <span class="new-pill">New</span></span></div>
           <div class="tt-box">
-            <div class="tt-title"><span class="new-pill cyan">NEW</span><b>Type a topic</b></div>
             <form class="tt-form" data-nodrag autocomplete="off">
-              <label class="tt-input">${ic('search')}<input type="text" placeholder="Try “videos in NYC” or “cats”" enterkeyhint="go" maxlength="40" value="${S.focus ? esc(S.focus.q) : ''}"></label>
-              <button type="submit" class="tt-go">Show only this</button>
+              <label class="tt-input">${ic('search')}<input type="text" placeholder="Try “ramen in NYC” or “memes”" enterkeyhint="go" maxlength="40" value="${S.focus ? esc(S.focus.q) : ''}"></label>
+              <button type="submit" class="tt-go">Show</button>
             </form>
-            <p class="tt-msg">Type exactly what you want. Your feed shows only those videos until you turn it off.</p>
+            <p class="tt-msg">Your For You shows only these videos until you turn it off.</p>
             <div class="tt-chips">${TT_CHIPS.map(c => `<button type="button" class="tt-chip" data-action="tt-chip" data-q="${c}">${c}</button>`).join('')}</div>
-            ${S.focus ? `<div class="tt-active">${ic('search')}<span>Showing only “${esc(S.focus.q)}”</span><button type="button" data-action="focus-off">Turn off</button></div>` : ''}
+            ${S.focus ? `<div class="tt-active"><span class="topic-ic">${ic('search')}</span><span class="grow">Showing only <b>${esc(S.focus.q)}</b></span><button type="button" data-action="focus-off">Turn off</button></div>` : ''}
           </div>
           <div class="topics-title"><span>Topics</span></div>
           ${rows}
-          <div class="fs-card">
-            <div class="fs-top"><span class="new-pill">NEW</span><b>Friend Shield</b><button type="button" class="fs-switch" data-action="fs-toggle" aria-label="Friend Shield"><span class="switch ${S.friendShield ? 'on' : ''}"></span></button></div>
-            <p><b class="c">Videos you share</b> count as a strong signal.</p>
-            <p><b class="r">Videos friends send you</b> only count if you like, rewatch or search for more.</p>
+          <div class="topics-title"><span>Signals</span></div>
+          <div class="fs-row">
+            <div class="topic-top">
+              <span class="topic-ic">${ic('shield')}</span>
+              <span class="topic-name">Friend Shield <span class="new-pill">New</span></span>
+              <button type="button" class="fs-switch" data-action="fs-toggle" aria-label="Friend Shield"><span class="switch ${S.friendShield ? 'on' : ''}"></span></button>
+            </div>
+            <p class="fs-sub"><b>Videos you share</b> count as a strong signal. <b>Videos friends send you</b> only count if you like, rewatch or search for more.</p>
           </div>
         </div>
         <div class="tune-foot">
@@ -1017,7 +1021,7 @@
   /* =========================================================
      Type a topic (focus the feed on one thing until turned off)
      ========================================================= */
-  const TT_CHIPS = ['NYC', 'cats', 'dogs', 'beach', 'ramen', 'dance', 'boxing'];
+  const TT_CHIPS = ['ramen', 'memes', 'NYC', 'cats', 'dogs', 'beach', 'dance'];
   function focusMatches(q) {
     const exact = matchVideos(q);
     if (!exact.length) return null;

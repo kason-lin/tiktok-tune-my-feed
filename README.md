@@ -54,7 +54,7 @@ Then open http://localhost:8000. To try it on a phone on the same Wi-Fi, find yo
 | `styles.css` | All visuals |
 | `app.js` | Feed, gestures, sheets, screens, ranking engine, demo panel |
 | `icons.js` | Inline SVG icons |
-| `data/videos.json` | The 45 videos (topic, creator, caption, sound, counts) |
+| `data/videos.json` | The 59 videos (topic, creator, caption, sound, counts) |
 | `data/videos.js` | Copy of the JSON, used only if you open `index.html` directly without the server |
 | `videos/` | 720×1280 H.264 clips with music (≈3 MB each) plus a `.jpg` poster for each |
 | `img/avatars/` | Creator avatars (cropped from the clips) |
