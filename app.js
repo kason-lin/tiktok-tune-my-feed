@@ -1021,7 +1021,7 @@
   /* =========================================================
      Type a topic (focus the feed on one thing until turned off)
      ========================================================= */
-  const TT_CHIPS = ['ramen', 'memes', 'NYC', 'cats', 'dogs', 'beach', 'dance'];
+  const TT_CHIPS = ['ramen', 'memes', 'NYC', 'pizza', 'Tokyo', 'dogs', 'boxing'];
   function focusMatches(q) {
     const exact = matchVideos(q);
     if (!exact.length) return null;

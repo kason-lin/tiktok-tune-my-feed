@@ -14,7 +14,7 @@ This is a concept prototype for a demo. It is not affiliated with TikTok.
 
 **What happened.** In a usability test, 3 of 3 NYU students understood the sliders with no explanation, and 2 of 3 picked them as their favorite feature. I pitched the MVP to 7 product managers at the NYU Product Management Club.
 
-**How it was built.** Plain HTML, CSS and JavaScript, built with Claude Code. Each slider sets a topic's weight, and the queue re-ranks 45 videos across 6 topics.
+**How it was built.** Plain HTML, CSS and JavaScript, built with Claude Code. Each slider sets a topic's weight, and the queue re-ranks 120 videos across 6 topics.
 
 Full case study: https://www.kasonlin.com/tiktok.html
 
@@ -54,7 +54,7 @@ Then open http://localhost:8000. To try it on a phone on the same Wi-Fi, find yo
 | `styles.css` | All visuals |
 | `app.js` | Feed, gestures, sheets, screens, ranking engine, demo panel |
 | `icons.js` | Inline SVG icons |
-| `data/videos.json` | The 59 videos (topic, creator, caption, sound, counts) |
+| `data/videos.json` | The 120 videos (topic, creator, caption, sound, counts) |
 | `data/videos.js` | Copy of the JSON, used only if you open `index.html` directly without the server |
 | `videos/` | 720×1280 H.264 clips with music (≈3 MB each) plus a `.jpg` poster for each |
 | `img/avatars/` | Creator avatars (cropped from the clips) |
