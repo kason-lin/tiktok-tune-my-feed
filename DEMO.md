@@ -19,6 +19,16 @@
 | 0:50 | Open the **demo panel** (D / two-finger tap) | "Under the hood: the next 10 videos before and after the save. Food went from about 1 in 10 to 5 in 10, and Travel dropped to almost zero." |
 | 0:55 | (Optional) Profile → ☰ → Settings and privacy → Content preferences → **Tune My Feed** | "And because it's not easy to discover, we added a one-time tip after the 5th swipe and a permanent home in Settings." |
 
+**Bonus features (both live in the same Tune your feed sheet):**
+
+| Do this | Say this |
+|---|---|
+| In **Type a topic**, tap **cats** (or type "videos in NYC") | "Sometimes you want one thing right now. Type it, and For You shows only that until you turn it off." |
+| Point at the **Only: cats ✕** pill under the tabs, swipe a few, then tap ✕ | "One tap and you're back to your normal feed." |
+| Inbox → open **maddie🌸**'s chat → tap the cat video she sent | "This is Friend Shield. One video a friend sends shouldn't hijack your feed, so it's ignored by default." |
+| Double-tap to like it. The banner flips to **Counts now** | "If you actually engage (like, rewatch or search for more), then it counts." |
+| Open the demo panel | "The log shows every signal: what counted, what was ignored, and why." |
+
 ---
 
 **If someone asks…**

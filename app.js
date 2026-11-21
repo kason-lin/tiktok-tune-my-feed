@@ -98,6 +98,10 @@
     penalty: store.get('penalty', {}),
     flags: Object.assign({ coachShown: false, tuneUsed: false }, store.get('flags', {})),
     lastMix: store.get('lastMix', null),
+    focus: store.get('focus', null),            // Type a topic: { q, ids, exact }
+    boost: store.get('boost', {}),              // per-topic multipliers from share / friend signals
+    friendShield: store.get('friendShield', true),
+    signals: store.get('signals', []),          // recent signal log for the demo panel
     muted: true, speed: 1, autoScroll: false, captions: false, translate: false, restricted: false,
     tab: 'foryou', nav: 'home', feeds: {}, swipes: 0, userPaused: false,
     fit: 1, scrubbing: false, profileTab: 'videos',
@@ -112,6 +116,10 @@
     prefs: () => store.set('prefs', S.prefs),
     penalty: () => store.set('penalty', S.penalty),
     flags: () => store.set('flags', S.flags),
+    focus: () => store.set('focus', S.focus),
+    boost: () => store.set('boost', S.boost),
+    friendShield: () => store.set('friendShield', S.friendShield),
+    signals: () => store.set('signals', S.signals),
   };
   const likeCount = v => v.likes + (S.liked.has(v.id) ? 1 : 0);
   const saveCount = v => v.saves + (S.saved.has(v.id) ? 1 : 0);
@@ -157,11 +165,12 @@
      ========================================================= */
   let keySeq = 0;
   const mkItem = id => ({ key: id + '#' + (++keySeq), id });
-  const topicWeight = t => (S.prefs[t] === MUTED ? 0 : WEIGHTS[S.prefs[t]] * (S.penalty[t] ?? 1));
+  const topicWeight = t => (S.prefs[t] === MUTED ? 0 : WEIGHTS[S.prefs[t]] * (S.penalty[t] ?? 1) * (S.boost[t] ?? 1));
   // Weighted picks by topic using smooth weighted round-robin with noise: random-looking order,
   // but every batch lands close to the chosen weights (so a live demo never gets an unlucky draw).
   // Never repeats any of the last 3 videos; within a topic prefers the least-recently-seen clip.
   function generate(n, historyIds, firstTopic = null) {
+    if (S.focus && S.focus.ids.length) return generateFocus(n, historyIds);
     const hist = historyIds.slice(), out = [];
     const w = Object.fromEntries(TOPICS.map(t => [t, topicWeight(t)]));
     if (TOPICS.every(t => !w[t])) TOPICS.forEach(t => { w[t] = 1; });
@@ -179,6 +188,19 @@
     }
     return out;
   }
+  // Type a topic: only the matched videos, least-recently-seen first, no back-to-back repeats.
+  function generateFocus(n, historyIds) {
+    const ids = S.focus.ids, hist = historyIds.slice(), out = [];
+    const gap = Math.min(3, ids.length - 1);
+    for (let k = 0; k < n; k++) {
+      const recent = gap > 0 ? hist.slice(-gap) : [];
+      let cands = ids.filter(id => !recent.includes(id));
+      if (!cands.length) cands = ids.slice();
+      cands = shuffle(cands).sort((a, b) => hist.lastIndexOf(a) - hist.lastIndexOf(b));
+      out.push(cands[0]); hist.push(cands[0]);
+    }
+    return out;
+  }
   function cycle(ids, times) {
     let out = [];
     for (let i = 0; i < times; i++) {
@@ -190,6 +212,7 @@
   }
   function buildFeed(name) {
     if (name === 'foryou') {
+      if (S.focus && S.focus.ids.length) return { name, list: generate(30, []).map(mkItem), index: 0 };
       const isDefault = TOPICS.every(t => S.prefs[t] === 2) && !Object.keys(S.penalty).length;
       const start = S.prefs.travel === MUTED ? generate(1, []) : ['travel-1'];
       let ids = isDefault ? CURATED_START.slice() : start.concat(generate(5, start));
@@ -299,6 +322,7 @@
     s.el.appendChild(h);
     setTimeout(() => h.remove(), 1000);
     if (!S.liked.has(s.v.id)) toggleLike(s.v.id);
+    friendEngaged(s, 'liked');
   }
 
   /* =========================================================
@@ -865,14 +889,29 @@
         <div class="tune-scroll s-scroll">
           <p class="tune-sub">Choose what you want to see more or less of on For You.</p>
           ${card}
+          <div class="tt-box">
+            <div class="tt-title"><span class="new-pill cyan">NEW</span><b>Type a topic</b></div>
+            <form class="tt-form" data-nodrag autocomplete="off">
+              <label class="tt-input">${ic('search')}<input type="text" placeholder="Try “videos in NYC” or “cats”" enterkeyhint="go" maxlength="40" value="${S.focus ? esc(S.focus.q) : ''}"></label>
+              <button type="submit" class="tt-go">Show only this</button>
+            </form>
+            <p class="tt-msg">Type exactly what you want. Your feed shows only those videos until you turn it off.</p>
+            <div class="tt-chips">${TT_CHIPS.map(c => `<button type="button" class="tt-chip" data-action="tt-chip" data-q="${c}">${c}</button>`).join('')}</div>
+            ${S.focus ? `<div class="tt-active">${ic('search')}<span>Showing only “${esc(S.focus.q)}”</span><button type="button" data-action="focus-off">Turn off</button></div>` : ''}
+          </div>
           <div class="topics-title"><span>Topics</span></div>
           ${rows}
+          <div class="fs-card">
+            <div class="fs-top"><span class="new-pill">NEW</span><b>Friend Shield</b><button type="button" class="fs-switch" data-action="fs-toggle" aria-label="Friend Shield"><span class="switch ${S.friendShield ? 'on' : ''}"></span></button></div>
+            <p><b class="c">Videos you share</b> count as a strong signal.</p>
+            <p><b class="r">Videos friends send you</b> only count if you like, rewatch or search for more.</p>
+          </div>
         </div>
         <div class="tune-foot">
           <button class="btn-primary" data-action="tune-save" disabled>Save</button>
           <p class="tune-note">Changes apply to your For You feed. Find this anytime in Settings › Content preferences.</p>
         </div>`,
-      onMount: wireSliders,
+      onMount: o => { wireSliders(o); wireTopicBox(o); },
       onClose: () => { if (TUNE && TUNE.sheet === o) TUNE = null; },
     });
     TUNE = { sheet: o, draft, basis, from, ctx: CTX };
@@ -963,14 +1002,118 @@
     const onForYou = S.nav === 'home' && !overlayStack.length && S.tab === 'foryou';
     if (S.tab === 'foryou') renderFeed();
     if (!$('#demoPanel').hidden) renderDemoPanel();
-    if (onForYou) {
-      updatingEl.hidden = false;
-      await sleep(1250);
-      updatingEl.classList.add('out');
-      await sleep(280);
-      updatingEl.hidden = true; updatingEl.classList.remove('out');
-    }
+    if (onForYou) await shimmer();
     toast(tuneMessage(draft), { ms: 2600 });
+  }
+
+  async function shimmer() {
+    updatingEl.hidden = false;
+    await sleep(1250);
+    updatingEl.classList.add('out');
+    await sleep(280);
+    updatingEl.hidden = true; updatingEl.classList.remove('out');
+  }
+
+  /* =========================================================
+     Type a topic (focus the feed on one thing until turned off)
+     ========================================================= */
+  const TT_CHIPS = ['NYC', 'cats', 'dogs', 'beach', 'ramen', 'dance', 'boxing'];
+  function focusMatches(q) {
+    const exact = matchVideos(q);
+    if (!exact.length) return null;
+    const ids = exact.map(v => v.id);
+    let related = 0;
+    if (ids.length < 4) {   // too few to scroll through: pad with the closest same-topic videos
+      const topics = new Set(exact.map(v => v.topic));
+      S.videos.filter(v => topics.has(v.topic) && !ids.includes(v.id)).sort((a, b) => b.likes - a.likes)
+        .slice(0, 5 - ids.length).forEach(v => { ids.push(v.id); related++; });
+    }
+    return { q: q.trim(), ids, exact: exact.length, related };
+  }
+  function updateFocusBanner() {
+    const on = !!S.focus && S.tab === 'foryou';
+    const b = $('#focusBanner');
+    b.hidden = !on;
+    app.classList.toggle('focus-on', on);
+    if (on) $('b', b).textContent = S.focus.q;
+  }
+  async function applyFocus(q) {
+    const m = focusMatches(q);
+    if (!m) return false;
+    S.focus = m; persist.focus();
+    closeAllSheets();
+    while (overlayStack.length) popScreen();
+    if (S.nav !== 'home') switchNav('home');
+    if (S.tab !== 'foryou') switchTab('foryou');
+    const f = S.feeds.foryou;
+    rebuildUpcoming(f);
+    renderFeed();
+    updateFocusBanner();
+    if (!$('#demoPanel').hidden) renderDemoPanel();
+    await shimmer();
+    go(1);
+    toast(`Showing only “${m.q}”${m.related ? ' + related videos' : ''}. Tap ✕ at the top to turn it off.`, { ms: 2800 });
+    return true;
+  }
+  function focusOff() {
+    if (!S.focus) return;
+    S.focus = null; persist.focus();
+    const f = S.feeds.foryou;
+    rebuildUpcoming(f);
+    if (S.tab === 'foryou') renderFeed();
+    updateFocusBanner();
+    $$('.tt-active').forEach(e => e.remove());
+    if (!$('#demoPanel').hidden) renderDemoPanel();
+    toast('Back to your normal For You');
+  }
+  function wireTopicBox(o) {
+    const form = $('.tt-form', o.sheet); if (!form) return;
+    const input = $('input', form), msg = $('.tt-msg', o.sheet);
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const q = input.value.trim();
+      if (!q) { input.focus(); return; }
+      input.blur();
+      const ok = await applyFocus(q);
+      if (!ok) { msg.classList.add('err'); msg.textContent = `No videos match “${q}” yet. Try one of these:`; }
+    });
+  }
+
+  /* =========================================================
+     Friend Shield: what counts as a signal
+     ========================================================= */
+  function logSignal(text, kind) {
+    S.signals.unshift({ text, kind });
+    S.signals = S.signals.slice(0, 6); persist.signals();
+    if (!$('#demoPanel').hidden) renderDemoPanel();
+  }
+  function addSignal(topic, mult, text, kind) {
+    S.boost[topic] = +Math.min(3, (S.boost[topic] ?? 1) * mult).toFixed(2); persist.boost();
+    const f = S.feeds.foryou;
+    if (f && !S.focus) { rebuildUpcoming(f); if (S.tab === 'foryou') renderFeed(); }
+    logSignal(text, kind);
+  }
+  function onShare(v) {
+    const T = L[v.topic];
+    if (S.friendShield) addSignal(v.topic, 1.6, `You shared a ${T} video → strong signal (+${T})`, 'strong');
+    else addSignal(v.topic, 1.15, `You shared a ${T} video → normal signal`, 'normal');
+  }
+  function friendEngaged(s, why) {
+    const o = s && s.screen;
+    if (!o || !o.friend || o.friend.counted || !S.friendShield) return;
+    o.friend.counted = true;
+    const T = L[s.v.topic];
+    addSignal(s.v.topic, 1.5, `You ${why} ${o.friend.name}'s ${T} video → now counts (+${T})`, 'strong');
+    const chip = $('.friend-chip', o.el);
+    const short = { liked: 'you liked it', rewatched: 'you rewatched it' }[why] || 'you searched for more';
+    if (chip) { chip.classList.add('done'); $('span', chip).innerHTML = `<b>Counts now</b> · ${short}`; }
+    vibrate(10);
+  }
+  function setFriendShield(on) {
+    S.friendShield = on; persist.friendShield();
+    $$('[data-action="fs-toggle"] .switch, .switch[data-action="fs-toggle"]').forEach(sw => sw.classList.toggle('on', on));
+    toast(on ? 'Friend Shield on' : 'Friend Shield off', { ms: 1200 });
+    if (!$('#demoPanel').hidden) renderDemoPanel();
   }
 
   /* =========================================================
@@ -1057,6 +1200,7 @@
     persist.reposted();
     $$(`.slide[data-vid="${id}"] .repost-pill`).forEach(p => { p.classList.toggle('done', on); $('span', p).textContent = on ? 'You reposted' : 'Repost to followers'; });
     toast(on ? 'Reposted' : 'Repost removed');
+    if (on) onShare(S.byId[id]);
   }
   const fakeLink = v => `https://www.tiktok.com/@${v.username}/video/${7400000000000000000 + (hash(v.id) % 99999999)}`;
   function copyText(text) { try { navigator.clipboard && navigator.clipboard.writeText(text).catch(() => {}); } catch (e) {} }
@@ -1111,23 +1255,29 @@
       <div class="sec-title"><span>You may like</span></div>
       <div class="sug-grid">${SUGGEST.map(([s, hot]) => `<button class="sug" data-action="s-sug" data-q="${s}"><span class="hot" style="${hot ? '' : 'background:var(--ink3)'}"></span><span class="grow">${s}</span></button>`).join('')}</div>`;
   }
+  function matchVideos(q) {
+    const ql = q.trim().toLowerCase();
+    if (!ql) return [];
+    if (ql.startsWith('#')) return S.videos.filter(v => v.caption.toLowerCase().includes(ql));
+    const exactSound = S.videos.filter(v => v.sound.toLowerCase() === ql);
+    if (exactSound.length) return exactSound;
+    const stop = new Set(['videos', 'video', 'the', 'and', 'with', 'for', 'about', 'only', 'more', 'some', 'show', 'me', 'in', 'of', 'on']);
+    const toks = ql.split(/\s+/).map(t => t.replace(/[^\p{L}\p{N}]/gu, '')).filter(t => t && !stop.has(t) && (t.length > 2 || ql.length <= 3));
+    if (!toks.length) return [];
+    // whole-word prefix match, so "cat" finds #catsoftiktok but not "vacation"
+    const score = (v, text) => {
+      const words = text.toLowerCase().split(/[^\p{L}\p{N}]+/u);
+      return toks.filter(t => words.some(w => w.startsWith(t) || (t.length > 3 && t.endsWith('s') && w.startsWith(t.slice(0, -1))))).length;
+    };
+    const rank = fn => S.videos.map(v => ({ v, s: fn(v) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s || b.v.likes - a.v.likes).map(x => x.v);
+    // prefer videos whose own caption or creator mentions it; fall back to the whole topic
+    const direct = rank(v => score(v, `${v.caption} ${v.username} ${v.name}`));
+    return direct.length ? direct : rank(v => score(v, `${v.topic} ${TOPIC_WORDS[v.topic]}`));
+  }
   function runSearch(o, q) {
     q = q.trim(); if (!q) return renderSuggestions(o);
     o.input.value = q; $('.s-box', o.el).classList.add('has-text');
-    const ql = q.toLowerCase();
-    let results;
-    if (ql.startsWith('#')) results = S.videos.filter(v => v.caption.toLowerCase().includes(ql));
-    else {
-      const exactSound = S.videos.filter(v => v.sound.toLowerCase() === ql);
-      if (exactSound.length) results = exactSound;
-      else {
-        const toks = ql.split(/\s+/).filter(t => t.length > 2 || ql.length <= 3);
-        results = S.videos.map(v => {
-          const hay = `${v.caption} ${v.username} ${v.name} ${v.sound} ${v.topic} ${TOPIC_WORDS[v.topic]}`.toLowerCase();
-          return { v, score: toks.filter(t => hay.includes(t)).length };
-        }).filter(x => x.score > 0).sort((a, b) => b.score - a.score || b.v.likes - a.v.likes).map(x => x.v);
-      }
-    }
+    const results = matchVideos(q);
     const tabs = ['Top', 'Videos', 'Users', 'Sounds', 'LIVE', 'Places'];
     $('.s-results', o.el).innerHTML = `<div class="r-tabs">${tabs.map((t, i) => `<button class="r-tab ${i === 0 ? 'on' : ''}" data-action="r-tab">${t}</button>`).join('')}</div>` +
       (results.length ? `<div class="r-grid">${results.map(v => `
@@ -1179,23 +1329,42 @@
       : `<button class="btn-red" style="width:164px" data-action="creator-follow">Follow</button><button class="btn-gray" data-action="creator-message">Message</button>`;
   }
 
-  function openViewer(id) {
+  function openViewer(id, from = null) {
     const v = S.byId[id]; if (!v) return;
     pushScreen({
       cls: 'viewer', dark: true,
       html: `<button class="viewer-back" data-action="pop" aria-label="Back">${ic('back')}</button>
         <div class="slide" data-vid="${v.id}"><video class="v" playsinline webkit-playsinline preload="auto" loop data-autoplay></video><div class="slide-ui"></div></div>
-        <button class="viewer-bar" data-action="comments" data-vid="${v.id}">${ic('smile')}<span class="grow">Add comment...</span>${ic('at')}</button>`,
+        <button class="viewer-bar" data-action="comments" data-vid="${v.id}">${ic('smile')}<span class="grow">Add comment...</span>${ic('at')}</button>
+        ${from ? `<div class="friend-chip">${ic('shield')}<span></span></div>` : ''}`,
       onMount(o) {
+        o.friend = from ? { name: from, counted: false } : null;
         const el = $('.slide', o.el);
         const s = { el, video: $('video', el), ui: $('.slide-ui', el), v, item: { id: v.id, key: 'viewer' }, ctx: 'viewer', screen: o };
         slideOf.set(el, s);
         s.video.src = v.src; s.video.poster = v.poster; s.video.muted = S.muted;
         s.ui.innerHTML = slideUI(v);
         requestAnimationFrame(() => fitCaption(s));
-        s.video.addEventListener('timeupdate', () => { if (s.video.currentTime > 3.5) el.classList.add('show-repost'); });
+        let lastT = 0;
+        s.video.addEventListener('timeupdate', () => {
+          const t = s.video.currentTime;
+          if (t > 3.5) el.classList.add('show-repost');
+          if (t + 0.5 < lastT && !s.scrubbed) friendEngaged(s, 'rewatched');   // looped back to the start
+          lastT = t;
+        });
         s.video.addEventListener('play', () => el.classList.remove('paused'));
         s.video.addEventListener('pause', () => el.classList.add('paused'));
+        if (o.friend) {
+          const T = L[v.topic], chip = $('.friend-chip span', o.el);
+          if (S.friendShield) {
+            chip.innerHTML = `Sent by <b>${esc(from)}</b> · won't change your feed unless you like, rewatch or search for more`;
+            logSignal(`${from} sent a ${T} video → ignored (Friend Shield)`, 'ignored');
+          } else {
+            o.friend.counted = true;
+            chip.innerHTML = `Sent by <b>${esc(from)}</b> · counts toward your feed`;
+            addSignal(v.topic, 1.3, `${from} sent a ${T} video → counted automatically (Shield off)`, 'normal');
+          }
+        }
         o.destroy = attachGestures(el, {
           onTapUp: () => {
             if (app.classList.contains('clear-display')) { app.classList.remove('clear-display'); return true; }
@@ -1328,7 +1497,7 @@
       const av = who === 'them' ? `<img class="av" src="${chat.p.a}" alt="">` : '';
       if (type === 'video') {
         const v = S.byId[val];
-        return `<div class="msg-row ${who}">${av}<button class="msg video" data-action="open-video" data-vid="${v.id}"><img src="${v.poster}" alt=""><span class="mv-cap"><img src="${v.avatar}" alt="">${esc(v.username)}</span></button></div>`;
+        return `<div class="msg-row ${who}">${av}<button class="msg video" data-action="open-video" data-vid="${v.id}"${who === 'them' ? ` data-from="${esc(chat.p.n)}"` : ''}><img src="${v.poster}" alt=""><span class="mv-cap"><img src="${v.avatar}" alt="">${esc(v.username)}</span></button></div>`;
       }
       return `<div class="msg-row ${who}">${av}<div class="msg">${esc(val)}</div></div>`;
     };
@@ -1481,6 +1650,7 @@
     if (!S.feeds[name]) S.feeds[name] = buildFeed(name);
     $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     moveUnderline(true);
+    updateFocusBanner();
     dismissCoach();
     renderFeed();
   }
@@ -1516,7 +1686,11 @@
       <div class="dp-sec">Up next (in order)</div>
       <div class="dp-queue">${nowT.map(t => `<span style="background:${TOPIC_COLOR[t]}" title="${L[t]}">${L[t][0]}</span>`).join('')}</div>
       <div class="dp-sec">Your settings</div>
-      <div class="dp-chips">${TOPICS.map(t => `<span class="${S.prefs[t] > 2 ? 'up' : S.prefs[t] < 2 ? 'down' : ''}">${L[t]}: ${levelName(S.prefs[t])}</span>`).join('')}</div>
+      <div class="dp-chips">${TOPICS.map(t => `<span class="${S.prefs[t] > 2 ? 'up' : S.prefs[t] < 2 ? 'down' : ''}">${L[t]}: ${levelName(S.prefs[t])}${(S.boost[t] ?? 1) > 1 ? ` · ×${S.boost[t]}` : ''}</span>`).join('')}</div>
+      <div class="dp-sec">Type a topic</div>
+      <div class="dp-chips">${S.focus ? `<span class="up">“${esc(S.focus.q)}” · ${S.focus.exact} match${S.focus.exact === 1 ? '' : 'es'}${S.focus.related ? ` + ${S.focus.related} related` : ''}</span>` : '<span>Off</span>'}</div>
+      <div class="dp-sec">Friend Shield · ${S.friendShield ? 'On' : 'Off'}</div>
+      <div class="dp-log">${S.signals.length ? S.signals.map(x => `<div class="dp-ev ${x.kind}">${esc(x.text)}</div>`).join('') : '<div class="dp-ev">No signals yet. Share a video, or open one a friend sent you in Inbox.</div>'}</div>
       <div class="dp-actions"><button data-action="demo-close">Close</button><button class="danger" data-action="demo-reset">Reset demo</button></div>
       <div class="dp-foot">Swipes this session: ${S.swipes} · Tip shown: ${S.flags.coachShown ? 'yes' : 'no'}<br>Weights — Much less 0.1 · Less 0.5 · Default 1 · More 2.5 · Much more 5</div>`;
   }
@@ -1538,14 +1712,17 @@
   };
   const A = {
     // feed / rail
-    like: el => { const c = ctxFromEl(el); toggleLike(c.v.id); },
+    like: el => { const c = ctxFromEl(el); toggleLike(c.v.id); if (S.liked.has(c.v.id)) friendEngaged(c.slide, 'liked'); },
     save: el => { const c = ctxFromEl(el); toggleSave(c.v.id); },
     comments: el => { CTX = ctxFromEl(el); openComments(CTX.v); },
     share: el => { CTX = ctxFromEl(el); openShare(CTX.v); },
     follow: el => { const c = ctxFromEl(el); setFollow(c.v.username, true, { animateBtn: el }); },
-    creator: el => { const u = el.dataset.user || ctxFromEl(el).v.username; openCreator(u); },
-    sound: el => openSearch(ctxFromEl(el).v.sound),
-    hashtag: el => openSearch('#' + el.dataset.tag),
+    creator: el => { friendEngaged(slideFromEl(el), 'searched for more like'); const u = el.dataset.user || ctxFromEl(el).v.username; openCreator(u); },
+    sound: el => { friendEngaged(slideFromEl(el), 'searched for more like'); openSearch(ctxFromEl(el).v.sound); },
+    hashtag: el => { friendEngaged(slideFromEl(el), 'searched for more like'); openSearch('#' + el.dataset.tag); },
+    'tt-chip': el => { const input = $('.tt-form input', el.closest('.sheet')); if (!input) return; input.value = el.dataset.q; input.form.requestSubmit(); },
+    'focus-off': () => focusOff(),
+    'fs-toggle': () => setFriendShield(!S.friendShield),
     repost: el => toggleRepost(ctxFromEl(el).v.id),
     'caption-toggle': el => { const s = slideFromEl(el); if (!s) return; s.expanded = !s.expanded; fitCaption(s); },
     translate: el => {
@@ -1653,11 +1830,13 @@
     'share-send': el => {
       const names = $$('.sh-contact.on', el.closest('.sheet')).map(x => x.dataset.name);
       closeSheet(); toast(names.length === 1 ? `Sent to ${names[0]}` : `Sent to ${names.length} friends`, { icon: 'check' });
+      if (CTX && CTX.v) onShare(CTX.v);
     },
     'share-app': el => {
       const k = el.dataset.k, v = CTX && CTX.v; if (!v) return;
       closeSheet();
       if (k === 'repost') return toggleRepost(v.id);
+      onShare(v);
       if (k === 'copy') { copyText(fakeLink(v)); return toast('Link copied'); }
       if (k === 'more' && navigator.share) { navigator.share({ title: v.name, text: v.caption, url: fakeLink(v) }).catch(() => {}); return; }
       toast({ messages: 'Opening Messages…', email: 'Opening Mail…', nearby: 'Looking for people nearby…', more: 'More sharing options' }[k]);
@@ -1676,7 +1855,7 @@
     'copy-profile': () => { copyText(`https://www.tiktok.com/@${ME.username}`); toast('Profile link copied'); },
 
     // screens
-    'open-video': el => openViewer(el.dataset.vid || vidFrom(el)),
+    'open-video': el => openViewer(el.dataset.vid || vidFrom(el), el.dataset.from || null),
     'p-tab': el => { S.profileTab = el.dataset.k; renderProfile(); },
     'profile-menu': () => openSheet({
       dragAnywhere: true,
@@ -1786,6 +1965,7 @@
     S.feeds.foryou = buildFeed('foryou');
     fit();
     renderFeed();
+    updateFocusBanner();
     showUnmuteHint();
     updateBadge();
     requestAnimationFrame(progressLoop);
